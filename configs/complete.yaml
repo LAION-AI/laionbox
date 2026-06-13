@@ -1,0 +1,71 @@
+# =============================================================================
+# DramaBox Annotation Completion Pipeline — Configuration
+# =============================================================================
+#
+# Completes annotation for all 363 batches of dramabox voice acting data.
+# - Batches 0-172:   "enrich" mode (add 16 missing fields to existing annotations)
+# - Batches 173-362: "full" mode (full annotation pipeline from raw WAVs)
+#
+# Usage:
+#   python scripts/dramabox_complete.py --config configs/complete.yaml
+#   python scripts/dramabox_complete.py --config configs/complete.yaml --test
+#   python scripts/dramabox_complete.py --config configs/complete.yaml --batches 0-50
+# =============================================================================
+
+# --- HuggingFace repositories ------------------------------------------------
+raw_repo: "laion/dramabox-voice-acting-data"
+annotated_repo: "laion/dramabox-voice-acting-data-annotated"
+output_repo: "laion/dramabox-voice-acting-data-annotated"
+
+# --- Batch range --------------------------------------------------------------
+batch_range:
+  start: 0        # first batch to process (inclusive)
+  end: 363        # last batch to process (exclusive)
+
+# --- GPU configuration -------------------------------------------------------
+gpu:
+  # "auto" = detect all available GPUs via nvidia-smi
+  # or specify a list: [0, 1, 2, 3]
+  devices: "auto"
+  # Model loading strategy:
+  #   "simultaneous" = all models loaded at once (needs 40+ GB VRAM)
+  #   "sequential"   = load/unload per stage (works with less VRAM)
+  #   "auto"         = measure VRAM, pick best strategy
+  loading_mode: "auto"
+
+# --- Postprocessing configuration ---------------------------------------------
+postprocess:
+  # RE-USE speech enhancement directory
+  reuse_dir: "/home/deployer/laion/REUSE"
+  # Whisper model size (only needed for "full" mode batches 173-362)
+  whisper_model: "turbo"
+  # VoiceCLAP batch size
+  clap_batch_size: 16
+  # MP3 output settings
+  mp3_bitrate: "256k"
+  mp3_sample_rate: 48000
+
+# --- Storage mode -------------------------------------------------------------
+storage:
+  # "local"             = keep all files on disk, no upload
+  # "upload_and_delete"  = upload TARs to HuggingFace, delete local copies
+  # "upload_and_keep"    = upload TARs to HuggingFace, keep local copies
+  mode: "upload_and_delete"
+
+# --- HuggingFace configuration ------------------------------------------------
+huggingface:
+  # Your HuggingFace token (or set HF_TOKEN env var)
+  token: "YOUR_HF_TOKEN_HERE"
+
+# --- Output -------------------------------------------------------------------
+output:
+  output_dir: "./complete_output"
+
+# --- Quality wrapper (used for CLAP aesthetics) -------------------------------
+quality_prefix: "Realistic, genuine, spontaneous, authentic, sensual, natural voice with all imperfections and organic microdistractions a natural situation brings with it. "
+quality_suffix: " Realistic, genuine, spontaneous, authentic, sensual, natural voice with all imperfections and organic microdistractions a natural situation brings with it"
+
+# --- Logging ------------------------------------------------------------------
+logging:
+  file: "complete.log"
+  level: "INFO"

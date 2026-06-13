@@ -1,0 +1,21 @@
+# Emolia → DramaBox Fine-Tuning Dataset Config
+# Creates ~6,000 same-speaker voice cloning pairs from emolia-3k-speaker-clusters
+
+emolia_repo: "laion/emolia-3k-speaker-clusters"
+output_dir: /home/deployer/laion/Voice-Acting-Pipeline/finetune_data_emolia
+
+# Pair selection criteria
+min_duration_sec: 3.0
+min_dnsmos: 2.5
+
+# DramaBox model paths (for audio VAE + text encoding)
+dramabox_dir: /home/deployer/laion/DramaBox
+full_checkpoint: /home/deployer/laion/DramaBox/models/ltx-2.3-22b-dev.safetensors
+gemma_root: /home/deployer/.cache/dramabox/models--unsloth--gemma-3-12b-it-bnb-4bit/snapshots/826e729dbaeea4ecb143738eed2bcf3539ebf7bf
+
+# Gamma LLM for prompt generation
+gguf_model_path: /home/deployer/laion/vocalbursts/models/gemma4-e4b-uncensored/Gemma-4-E4B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf
+
+# Merge with existing DramaBox finetune data
+existing_finetune_dir: /home/deployer/laion/Voice-Acting-Pipeline/finetune_data
+combined_dir: /home/deployer/laion/Voice-Acting-Pipeline/finetune_data_combined

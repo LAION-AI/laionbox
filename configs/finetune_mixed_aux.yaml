@@ -1,0 +1,78 @@
+# Mixed-source training WITH multi-auxiliary losses
+# 40% DramaBox, 20% Emolia (all 6K), 40% Podcast (12K)
+# Uses dramabox_finetune_train_multi_aux.py with differentiable rewards
+# 5 podcast epochs on the same 40/20/40 data
+
+# ── Data source ────────────────────────────────────────────────────────
+preprocessed_dir: "./finetune_data_combined"
+index_file: "./finetune_data_combined/index_mixed.json"
+
+# ── Bucket-weighted sampling (used by BucketWeightedSampler) ──────────
+bucket_weights:
+  dramabox: 0.4
+  emolia: 0.2
+  podcast: 0.4
+
+# ── Podcast epochs: train until podcast bucket seen 5 times ────────────
+podcast_epochs: 5
+
+# ── DramaBox model paths ──────────────────────────────────────────────
+dramabox_dir: "/home/deployer/laion/DramaBox"
+checkpoint: "/home/deployer/laion/DramaBox/models/ltx-2.3-22b-dev-audio-only-v13-merged.safetensors"
+full_checkpoint: "/home/deployer/laion/DramaBox/models/ltx-2.3-22b-dev.safetensors"
+gemma_root: "/home/deployer/.cache/dramabox/models--unsloth--gemma-3-12b-it-bnb-4bit/snapshots/826e729dbaeea4ecb143738eed2bcf3539ebf7bf"
+base_model: "dev"
+
+# ── LoRA ──────────────────────────────────────────────────────────────
+lora_rank: 128
+lora_alpha: 128
+lora_dropout: 0.05
+resume_lora: "./finetune_output/mixed_aux_5ep/lora_epoch2.safetensors"
+resume_dir: "./finetune_output/mixed_aux_5ep"
+
+# ── Training ──────────────────────────────────────────────────────────
+lr: 6.0e-5
+lr_scheduler: "cosine"
+warmup_steps: 100
+batch_size: 1
+grad_accum: 32               # effective batch = 8 GPUs × 1 × 32 = 256
+max_grad_norm: 1.0
+seed: 42
+expand_all_modes: true        # All 3 modes for DramaBox/podcast, fwd only for Emolia
+
+# ── Voice cloning specific ────────────────────────────────────────────
+max_ref_tokens: 250
+text_dropout: 0.1
+
+# ── Multi-Auxiliary Losses ─────────────────────────────────────────────
+clap_loss: true
+differentiable_reward: true
+diff_reward_checkpoint: true   # gradient checkpointing on decoder/CLAP for VRAM savings
+aux_sigma_max: 0.4             # only compute aux losses when sigma < 0.4
+aux_target_ratio: 6.0          # target: each aux loss = 6× flow matching magnitude
+speaker_sim_ratio: 6.0         # same ratio for speaker similarity
+coeff_cap: 10.0                # max adaptive coefficient value
+positive_text: "Realistic, genuine, spontaneous, authentic, sensual, natural voice with all imperfections and organic microdistractions a natural situation brings with it"
+negative_text: "distorted, unnatural, robotic, distortion"
+classifiers_dir: "./classifiers"
+
+# ── Checkpointing ────────────────────────────────────────────────────
+output_dir: "./finetune_output/mixed_aux_5ep"
+save_every: 50
+log_every: 10
+
+# ── Monitor ───────────────────────────────────────────────────────────
+monitor_port: 8766
+
+# ── Validation ────────────────────────────────────────────────────────
+val_samples: 10
+val_refs_dir: "/home/deployer/laion/test-refs"
+
+# ── Expected training stats ──────────────────────────────────────────
+# BucketWeightedSampler with podcast as anchor:
+#   Podcast: 11,966 items (fwd mode) → epoch_size = 11,966/0.4 = 29,915 items
+#   Per-GPU per epoch: 29,915/8 = 3,739 micro-batches → 3,739/32 = ~117 optimizer steps
+#   5 podcast epochs → 5 × 117 = ~585 optimizer steps total
+#   DramaBox: 3,247 × 3 modes = 9,741 items, needs 11,966 per epoch → ~1.2× per epoch
+#   Emolia: 5,990 items (fwd), needs 5,983 per epoch → ~1.0× per epoch
+#   Estimated time: ~5 hours on 8×A100 (with differentiable reward overhead)

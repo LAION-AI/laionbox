@@ -1,0 +1,152 @@
+# =============================================================================
+# DramaBox End-to-End Pipeline — Local Storage Configuration
+# =============================================================================
+#
+# Generates voice acting data from prompt generation through annotated WebDataset
+# TARs, keeping all output on local disk.
+#
+# Usage:
+#   python scripts/dramabox_e2e.py --config configs/e2e_local.yaml
+#   python scripts/dramabox_e2e.py --config configs/e2e_local.yaml --test
+#   python scripts/dramabox_e2e.py --config configs/e2e_local.yaml --gpus 0,1,2,3
+# =============================================================================
+
+# --- Pipeline mode -----------------------------------------------------------
+# "generate"  = generate prompts on-the-fly via GGUF LLM
+# "ingest"    = load pre-generated prompts from JSON files
+mode: "generate"
+
+# --- Prompt generation (mode=generate) ---------------------------------------
+prompt_generation:
+  # Path to GGUF model for prompt generation
+  gguf_model_path: "/home/deployer/laion/vocalbursts/models/gemma4-e4b-uncensored/Gemma-4-E4B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf"
+  n_ctx: 8192
+  max_tokens: 4096
+  temperature: 0.85
+  top_p: 0.92
+  # Default format for generated prompts: "cut_to" (two-scene) or "standard"
+  default_format: "cut_to"
+
+# --- Prompt ingestion (mode=ingest) ------------------------------------------
+prompt_ingestion:
+  # List of JSON files containing pre-generated prompts.
+  # Each file should contain a list of dicts with at least "dramabox_prompt" key.
+  # Paths are relative to the Voice-Acting-Pipeline/data directory.
+  prompt_files:
+    - "dramabox_cca_voicenet.json"
+    - "dramabox_cc2c_archetype.json"
+    - "dramabox_accc_acting_challenge.json"
+    - "dramabox_sit_situation.json"
+    - "dramabox_extreme_physical.json"
+    - "dramabox_cca_voicenet_de.json"
+    - "dramabox_cc2c_archetype_de.json"
+    - "dramabox_accc_acting_challenge_de.json"
+    - "dramabox_extreme_physical_de.json"
+
+# --- Pathway distribution (mode=generate) ------------------------------------
+# Controls what fraction of prompts each pathway generates.
+# Values are normalized to sum to 1.0.
+pathway_percentages:
+  voicenet: 0.25
+  acting_challenge: 0.25
+  situation: 0.25
+  archetype: 0.15
+  extreme_physical: 0.10
+
+# --- Language distribution (mode=generate) -----------------------------------
+# Controls what fraction of prompts are in each language.
+# Values are normalized to sum to 1.0.
+language_percentages:
+  English: 0.50
+  German: 0.50
+
+# --- GPU configuration -------------------------------------------------------
+gpu:
+  # "auto" = detect all available GPUs via nvidia-smi
+  # or specify a list: [0, 1, 2, 3]
+  devices: "auto"
+  # Model loading strategy:
+  #   "simultaneous" = all models loaded at once (needs 70+ GB VRAM)
+  #   "sequential"   = load/unload per stage (works with 40-70 GB)
+  #   "auto"         = measure VRAM, pick best strategy
+  loading_mode: "auto"
+
+# --- TTS configuration -------------------------------------------------------
+tts:
+  # Number of audio seeds to generate per prompt
+  seeds_per_prompt: 25
+  # Path to DramaBox repository
+  dramabox_dir: "/home/deployer/laion/DramaBox"
+  # Generation parameters
+  cfg_scale: 2.5
+  stg_scale: 1.5
+  duration_multiplier: 1.1
+  watermark: false
+  compile_model: true
+  bnb_4bit: true
+
+# --- Postprocessing configuration --------------------------------------------
+postprocess:
+  # RE-USE speech enhancement
+  reuse_dir: "/home/deployer/laion/REUSE"
+  # Whisper model size
+  whisper_model: "turbo"
+  # VoiceCLAP batch size (files accumulated before batching)
+  clap_batch_size: 16
+  # MP3 output settings
+  mp3_bitrate: "256k"
+  mp3_sample_rate: 48000
+
+# --- Batching ----------------------------------------------------------------
+batching:
+  # Number of prompts per "group" (one prompt × N seeds = one group)
+  prompts_per_group: 25
+  # Number of completed groups before creating a TAR file
+  groups_per_tar: 10
+
+# --- Output -------------------------------------------------------------------
+output:
+  output_dir: "./e2e_output"
+
+# --- Storage mode -------------------------------------------------------------
+storage:
+  # "local"             = keep all files on disk, no upload
+  # "upload_and_delete"  = upload TARs to HuggingFace, delete local copies
+  # "upload_and_keep"    = upload TARs to HuggingFace, keep local copies
+  mode: "local"
+
+# --- HuggingFace configuration (only used when storage.mode != "local") -------
+huggingface:
+  # Your HuggingFace token (or set HF_TOKEN env var)
+  token: "YOUR_HF_TOKEN_HERE"
+  # Target dataset repository
+  repo_id: "your-org/dramabox-voice-acting-e2e"
+
+# --- Monitoring dashboard -----------------------------------------------------
+monitor:
+  enabled: true
+  # HTTP port for the dashboard (auto-tries next port if occupied)
+  port: 8766
+  # Start a Cloudflare tunnel for remote access
+  cloudflare_tunnel: true
+
+# --- Logging ------------------------------------------------------------------
+logging:
+  file: "pipeline.log"
+  level: "INFO"
+
+# --- Reproducibility ----------------------------------------------------------
+seed: 42
+
+# --- Taxonomy data directory --------------------------------------------------
+# Path to the Voice-Acting-Pipeline/data directory containing taxonomy files.
+# Relative paths are resolved against the Voice-Acting-Pipeline root.
+data_dir: "data"
+
+# --- Quality wrapper ----------------------------------------------------------
+# Prepended/appended to every prompt sent to TTS
+quality_prefix: "Realistic, genuine, spontaneous, authentic, sensual, natural voice with all imperfections and organic microdistractions a natural situation brings with it. "
+quality_suffix: " Realistic, genuine, spontaneous, authentic, sensual, natural voice with all imperfections and organic microdistractions a natural situation brings with it"
+
+# --- Resume -------------------------------------------------------------------
+auto_resume: true

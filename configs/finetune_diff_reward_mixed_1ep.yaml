@@ -1,0 +1,61 @@
+# Differentiable Reward: 1 epoch on mixed 40/20/40 dataset
+# Continues from LaionBox v0.1-wip with CLAP-small (768-dim) differentiable reward
+# Same approach as v0.1-wip (Run 7) but on the broader mixed dataset
+# ~117 steps/epoch, warmup 47 steps (40%), effective batch 256
+
+# ── Data source ────────────────────────────────────────────────────────
+preprocessed_dir: "./finetune_data_combined"
+index_file: "./finetune_data_combined/index_mixed.json"
+
+bucket_weights:
+  dramabox: 0.4
+  emolia: 0.2
+  podcast: 0.4
+
+podcast_epochs: 1
+
+# ── DramaBox model paths ──────────────────────────────────────────────
+dramabox_dir: "/home/deployer/laion/DramaBox"
+checkpoint: "/home/deployer/laion/DramaBox/models/ltx-2.3-22b-dev-audio-only-v13-merged.safetensors"
+full_checkpoint: "/home/deployer/laion/DramaBox/models/ltx-2.3-22b-dev.safetensors"
+gemma_root: "/home/deployer/.cache/dramabox/models--unsloth--gemma-3-12b-it-bnb-4bit/snapshots/826e729dbaeea4ecb143738eed2bcf3539ebf7bf"
+base_model: "dev"
+
+# ── LoRA ──────────────────────────────────────────────────────────────
+lora_rank: 128
+lora_alpha: 128
+lora_dropout: 0.05
+resume_lora: "/home/deployer/.cache/huggingface/hub/models--laion--laionbox-v0.1-wip/snapshots/66176d2a653a013a7b71c1ccb7a7a4d4cf514b0d/lora_epoch5.safetensors"
+
+# ── Training ──────────────────────────────────────────────────────────
+lr: 4.0e-5
+lr_scheduler: "cosine"
+warmup_steps: 47
+batch_size: 1
+grad_accum: 32
+max_grad_norm: 1.0
+seed: 42
+expand_all_modes: true
+max_ref_tokens: 200
+text_dropout: 0.1
+
+# ── Differentiable auxiliary rewards (CLAP-small, same as v0.1-wip) ──
+clap_loss: true
+differentiable_reward: true
+diff_reward_checkpoint: true
+aux_target_ratio: 5.0
+coeff_cap: 10.0
+aux_sigma_max: 0.4
+positive_text: "Realistic, genuine, spontaneous, authentic, sensual, natural voice with all imperfections and organic microdistractions a natural situation brings with it"
+negative_text: "distorted, unnatural, robotic, distortion"
+classifiers_dir: "./classifiers"
+
+# ── Checkpoint management ────────────────────────────────────────────
+output_dir: "./finetune_output/diff_reward_mixed_1ep"
+save_every: 10
+keep_last_n: 5
+log_every: 2
+monitor_port: 8773
+
+val_samples: 0
+no_save_state: true

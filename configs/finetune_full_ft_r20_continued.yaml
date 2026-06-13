@@ -1,0 +1,49 @@
+# Run 20b: Restart from Run 20 step 120 (Run 20a crashed at epoch1 from disk full)
+# Lower LR (2e-6), 2 more podcast-epochs, all 8 GPUs
+# 70% podcast + 30% dramabox
+# Effective batch: 8 GPUs x 1 x 16 = 128
+
+# -- Data source ---------------------------------------------------------------
+preprocessed_dir: "/home/deployer/laion/Voice-Acting-Pipeline/finetune_data_combined"
+index_file: "/home/deployer/laion/Voice-Acting-Pipeline/finetune_data_combined/index_mixed.json"
+
+bucket_weights:
+  podcast: 0.7
+  dramabox: 0.3
+
+podcast_epochs: 2
+
+# -- DramaBox model paths ------------------------------------------------------
+dramabox_dir: "/home/deployer/laion/DramaBox"
+checkpoint: "/home/deployer/laion/Voice-Acting-Pipeline/finetune_output/full_ft_r20_continued/model_step_00120.safetensors"
+full_checkpoint: "/home/deployer/laion/DramaBox/models/ltx-2.3-22b-dev.safetensors"
+gemma_root: "/home/deployer/.cache/dramabox/models--unsloth--gemma-3-12b-it-bnb-4bit/snapshots/826e729dbaeea4ecb143738eed2bcf3539ebf7bf"
+base_model: "dev"
+
+# -- Full fine-tuning (no LoRA) ------------------------------------------------
+full_ft: true
+
+# -- Training ------------------------------------------------------------------
+lr: 2.0e-6
+lr_scheduler: "cosine"
+warmup_steps: 20
+batch_size: 1
+grad_accum: 16
+max_grad_norm: 1.0
+seed: 42
+expand_all_modes: true
+max_ref_tokens: 200
+text_dropout: 0.1
+
+# -- No auxiliary losses -------------------------------------------------------
+clap_loss: false
+
+# -- Checkpoint management -----------------------------------------------------
+output_dir: "/home/deployer/laion/Voice-Acting-Pipeline/finetune_output/full_ft_r20b"
+save_every: 40
+log_every: 5
+monitor_port: 8782
+no_save_state: true
+keep_last_n: 3
+
+val_samples: 0

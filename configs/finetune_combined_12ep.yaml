@@ -1,0 +1,40 @@
+# Combined Dataset Training Config — 12 epochs, LR 2e-4
+# Trains on DramaBox annotated data + Emolia same-speaker pairs
+# effective batch = 8 GPUs x 1 x 4 grad_accum = 32
+
+preprocessed_dir: ./finetune_data_combined
+output_dir: ./finetune_output/combined_12ep
+dramabox_dir: /home/deployer/laion/DramaBox
+checkpoint: /home/deployer/laion/DramaBox/models/ltx-2.3-22b-dev-audio-only-v13-merged.safetensors
+full_checkpoint: /home/deployer/laion/DramaBox/models/ltx-2.3-22b-dev.safetensors
+gemma_root: /home/deployer/.cache/dramabox/models--unsloth--gemma-3-12b-it-bnb-4bit/snapshots/826e729dbaeea4ecb143738eed2bcf3539ebf7bf
+
+base_model: dev
+lora_rank: 128
+lora_alpha: 128
+lora_dropout: 0.05
+
+epochs: 12
+lr: 2.0e-4
+lr_scheduler: cosine
+batch_size: 1
+grad_accum: 4
+warmup_steps: 100
+max_grad_norm: 1.0
+max_ref_tokens: 250
+text_dropout: 0.1
+
+# Use all 3 modes (fwd/rev/uncond) for DramaBox samples each epoch
+# Emolia samples use voice_clone_fwd only (direction pre-defined)
+# DramaBox: ~3,247 x 3 = ~10,000 items + Emolia: ~5,990 = ~6,000
+# Total ~16,000 items per epoch, globally shuffled
+expand_all_modes: true
+
+save_every: 200
+log_every: 10
+seed: 42
+
+val_samples: 10
+val_refs_dir: /home/deployer/laion/test-refs
+
+monitor_port: 8765

@@ -1,0 +1,49 @@
+# CLAP-Guided Fine-Tuning — 2 epochs (13-14) with CLAP auxiliary loss
+# Resumes from combined_12ep, uses filtered dataset (all DramaBox + top 10% Emolia)
+# effective batch = 8 GPUs x 1 x 4 grad_accum = 32
+# 3845 samples → 10339 items/epoch (expand_all_modes) → 324 steps/epoch → 648 total
+
+preprocessed_dir: ./finetune_data_combined
+output_dir: ./finetune_output/combined_14ep_clap
+dramabox_dir: /home/deployer/laion/DramaBox
+checkpoint: /home/deployer/laion/DramaBox/models/ltx-2.3-22b-dev-audio-only-v13-merged.safetensors
+full_checkpoint: /home/deployer/laion/DramaBox/models/ltx-2.3-22b-dev.safetensors
+gemma_root: /home/deployer/.cache/dramabox/models--unsloth--gemma-3-12b-it-bnb-4bit/snapshots/826e729dbaeea4ecb143738eed2bcf3539ebf7bf
+
+base_model: dev
+lora_rank: 128
+lora_alpha: 128
+lora_dropout: 0.05
+
+# Resume LoRA weights from 12-epoch run (fresh optimizer for new LR schedule)
+resume_lora: ./finetune_output/combined_12ep/lora_epoch12.safetensors
+
+epochs: 2
+lr: 2.0e-5
+lr_scheduler: cosine
+batch_size: 1
+grad_accum: 4
+warmup_steps: 162
+max_grad_norm: 1.0
+max_ref_tokens: 250
+text_dropout: 0.1
+
+# Filtered index (all DramaBox + top 10% Emolia by DNS MOS)
+index_file: ./finetune_data_combined/index_filtered.json
+
+# CLAP auxiliary loss settings
+clap_loss: true
+clap_target_ratio: 0.25
+positive_text: "Realistic, genuine, spontaneous, authentic, sensual, natural voice with all imperfections and organic microdistractions a natural situation brings with it"
+negative_text: "distorted, unnatural, robotic, distortion"
+
+expand_all_modes: true
+
+save_every: 162
+log_every: 10
+seed: 42
+
+val_samples: 10
+val_refs_dir: /home/deployer/laion/test-refs
+
+monitor_port: 8765

@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DramaBox TTS Server</title>
+<style>
+  :root {
+    --bg: #0f1117; --bg2: #1a1d27; --bg3: #252833;
+    --fg: #e0e0e8; --fg2: #8888a0; --accent: #6c8cff;
+    --accent2: #4a6ae0; --green: #4caf7a; --red: #e05454;
+    --orange: #e0a040; --border: #333648; --radius: 8px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    background: var(--bg); color: var(--fg);
+    min-height: 100vh; padding: 20px;
+  }
+  h1 { font-size: 1.4em; margin-bottom: 4px; color: var(--accent); }
+  h2 { font-size: 1em; margin-bottom: 8px; color: var(--fg2); font-weight: normal; }
+  .subtitle { color: var(--fg2); font-size: 0.85em; margin-bottom: 20px; }
+
+  .container { max-width: 1100px; margin: 0 auto; }
+
+  .panel {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; margin-bottom: 16px;
+  }
+  .panel-header {
+    display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer; user-select: none; margin-bottom: 8px;
+  }
+  .panel-header h2 { margin: 0; }
+  .panel-header .toggle { color: var(--fg2); font-size: 0.9em; }
+
+  textarea {
+    width: 100%; min-height: 120px; resize: vertical;
+    background: var(--bg3); color: var(--fg); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px; font-family: inherit;
+    font-size: 0.9em; line-height: 1.5;
+  }
+  textarea:focus { outline: none; border-color: var(--accent); }
+  textarea::placeholder { color: var(--fg2); opacity: 0.6; }
+
+  .file-drop {
+    border: 2px dashed var(--border); border-radius: var(--radius);
+    padding: 20px; text-align: center; color: var(--fg2);
+    cursor: pointer; transition: border-color 0.2s;
+  }
+  .file-drop.dragover { border-color: var(--accent); }
+  .file-drop.has-file { border-color: var(--green); border-style: solid; }
+  .file-drop input { display: none; }
+
+  .controls-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px; margin-top: 12px;
+  }
+  .control-item { display: flex; flex-direction: column; gap: 4px; }
+  .control-item label {
+    font-size: 0.8em; color: var(--fg2);
+    display: flex; justify-content: space-between;
+  }
+  .control-item label span { color: var(--accent); }
+  input[type="range"] {
+    width: 100%; accent-color: var(--accent); background: transparent;
+  }
+  input[type="number"] {
+    width: 100%; background: var(--bg3); color: var(--fg);
+    border: 1px solid var(--border); border-radius: 4px; padding: 6px 8px;
+    font-family: inherit; font-size: 0.85em;
+  }
+  input[type="number"]:focus { outline: none; border-color: var(--accent); }
+
+  .toggle-row {
+    display: flex; align-items: center; gap: 10px; margin-top: 8px;
+  }
+  .switch {
+    position: relative; width: 44px; height: 24px;
+    background: var(--bg3); border-radius: 12px; cursor: pointer;
+    transition: background 0.2s; border: 1px solid var(--border);
+  }
+  .switch.on { background: var(--accent); }
+  .switch .knob {
+    position: absolute; top: 2px; left: 2px;
+    width: 18px; height: 18px; background: white;
+    border-radius: 50%; transition: left 0.2s;
+  }
+  .switch.on .knob { left: 22px; }
+
+  .btn {
+    padding: 10px 24px; border: none; border-radius: var(--radius);
+    font-family: inherit; font-size: 0.95em; cursor: pointer;
+    font-weight: 600; transition: all 0.2s;
+  }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-row { display: flex; gap: 12px; margin-top: 12px; align-items: center; }
+
+  .status-text { font-size: 0.85em; color: var(--fg2); }
+  .status-text.active { color: var(--orange); }
+  .status-text.done { color: var(--green); }
+  .status-text.error { color: var(--red); }
+
+  /* Results */
+  .segment-card {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px; margin-bottom: 10px;
+    transition: border-color 0.3s;
+  }
+  .segment-card.playing { border-color: var(--green); }
+  .segment-card.pending { opacity: 0.5; }
+  .segment-card .seg-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 6px;
+  }
+  .segment-card .seg-idx {
+    font-weight: 700; color: var(--accent); font-size: 0.85em;
+  }
+  .segment-card .seg-gpu { font-size: 0.75em; color: var(--fg2); }
+  .segment-card .seg-text {
+    font-size: 0.8em; color: var(--fg2); margin-bottom: 8px;
+    line-height: 1.4; max-height: 3em; overflow: hidden;
+  }
+  .segment-card audio { width: 100%; height: 32px; margin-bottom: 6px; }
+  .timing-row {
+    display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.75em; color: var(--fg2);
+  }
+  .timing-row .t-item { background: var(--bg2); padding: 2px 6px; border-radius: 4px; }
+  .timing-row .t-item .t-val { color: var(--accent); }
+  .asr-info { font-size: 0.78em; margin-top: 4px; padding: 6px 8px; background: var(--bg2); border-radius: 4px; }
+  .asr-info .asr-label { color: var(--fg2); }
+  .asr-info .asr-transcript { color: var(--fg); font-style: italic; }
+  .badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 0.75em; font-weight: 600; }
+  .badge-trimmed { background: #2d5a3d; color: var(--green); }
+  .badge-clean { background: var(--bg3); color: var(--fg2); }
+  .badge-asr { background: #2a3560; color: var(--accent); }
+
+  /* Full audio */
+  .full-audio { margin-top: 16px; }
+  .full-audio audio { width: 100%; }
+
+  /* Timing table */
+  table { width: 100%; border-collapse: collapse; font-size: 0.8em; }
+  th, td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { color: var(--fg2); font-weight: normal; }
+  td { color: var(--fg); }
+  .total-row { font-weight: 700; }
+
+  .help-text {
+    font-size: 0.75em; color: var(--fg2); margin-bottom: 6px;
+    line-height: 1.4; opacity: 0.8;
+  }
+  .control-item .help-text { margin-top: 2px; margin-bottom: 0; }
+
+  select {
+    width: 100%; background: var(--bg3); color: var(--fg);
+    border: 1px solid var(--border); border-radius: 4px; padding: 6px 8px;
+    font-family: inherit; font-size: 0.85em;
+  }
+  select:focus { outline: none; border-color: var(--accent); }
+
+  .hidden { display: none; }
+
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+  .pulsing { animation: pulse 1.2s infinite; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>DramaBox TTS</h1>
+  <p class="subtitle">Multi-GPU parallel generation with LoRA voice cloning</p>
+
+  <!-- Prompt Prefix -->
+  <div class="panel">
+    <h2>Prompt Prefix</h2>
+    <div class="help-text">Prepended to every TTS prompt to guide voice quality. Leave empty to disable.</div>
+    <textarea id="prefix" style="min-height:60px">Realistic, genuine, spontaneous, authentic, sensual, natural voice with all imperfections and organic microdistractions a natural situation brings with it: </textarea>
+  </div>
+
+  <!-- Prompt -->
+  <div class="panel">
+    <h2>Prompt</h2>
+    <textarea id="prompt" placeholder='A woman speaks with warm sincerity, "Hello there, welcome to the show." She pauses briefly. "I hope you are having a wonderful day." She laughs softly. "Let us get started, shall we?"'></textarea>
+  </div>
+
+  <!-- Voice Reference -->
+  <div class="panel">
+    <h2>Voice Reference (optional)</h2>
+    <div class="file-drop" id="fileDrop">
+      <span id="fileLabel">Drop a WAV/MP3 file here or click to browse</span>
+      <input type="file" id="fileInput" accept="audio/*">
+    </div>
+  </div>
+
+  <!-- Hyperparameters -->
+  <div class="panel">
+    <div class="panel-header" onclick="togglePanel('paramsBody')">
+      <h2>Hyperparameters</h2>
+      <span class="toggle" id="paramsToggle">[show]</span>
+    </div>
+    <div id="paramsBody" class="hidden">
+      <div class="controls-grid">
+        <div class="control-item">
+          <label>CFG Scale <span id="cfgVal">2.5</span></label>
+          <input type="range" id="cfgScale" min="1.0" max="8.0" step="0.1" value="2.5"
+                 oninput="document.getElementById('cfgVal').textContent=this.value">
+          <div class="help-text">Classifier-free guidance. Higher = more prompt adherence but less natural.</div>
+        </div>
+        <div class="control-item">
+          <label>STG Scale <span id="stgVal">1.5</span></label>
+          <input type="range" id="stgScale" min="0.0" max="3.0" step="0.1" value="1.5"
+                 oninput="document.getElementById('stgVal').textContent=this.value">
+          <div class="help-text">Spatiotemporal guidance. Controls generation diversity.</div>
+        </div>
+        <div class="control-item">
+          <label>Duration Mode</label>
+          <select id="durationMode" onchange="onDurationModeChange()">
+            <option value="algorithmic" selected>Algorithmic</option>
+            <option value="fixed">Fixed</option>
+          </select>
+          <div class="help-text">Algorithmic: auto-estimates from text length. Fixed: constant duration for all segments.</div>
+        </div>
+        <div class="control-item" id="durMulWrap">
+          <label>Duration Multiplier <span id="durVal">0.9</span></label>
+          <input type="range" id="durMul" min="0.5" max="2.0" step="0.05" value="0.9"
+                 oninput="document.getElementById('durVal').textContent=this.value">
+          <div class="help-text">Scales estimated duration. >1.0 = slower, &lt;1.0 = faster.</div>
+        </div>
+        <div class="control-item hidden" id="fixedDurWrap">
+          <label>Fixed Duration (s)</label>
+          <input type="number" id="fixedDur" value="5.0" min="1.0" max="30.0" step="0.5">
+          <div class="help-text">Duration in seconds for each segment.</div>
+        </div>
+        <div class="control-item">
+          <label>Ref Duration (s) <span id="refDurVal">10.0</span></label>
+          <input type="range" id="refDur" min="3.0" max="30.0" step="0.5" value="10.0"
+                 oninput="document.getElementById('refDurVal').textContent=this.value">
+          <div class="help-text">Seconds of voice reference to use. More = better voice match but slower.</div>
+        </div>
+        <div class="control-item">
+          <label>Seed</label>
+          <input type="number" id="seed" value="42" min="0" max="999999">
+          <div class="help-text">Random seed for reproducibility. Same seed + prompt = same audio.</div>
+        </div>
+        <div class="control-item">
+          <label>Candidates <span id="candVal">1</span></label>
+          <input type="range" id="numCandidates" min="1" max="5" step="1" value="1"
+                 oninput="document.getElementById('candVal').textContent=this.value">
+          <div class="help-text">Generate N candidates per segment, rank by WER (lowest = best). Requires ASR.</div>
+        </div>
+      </div>
+      <div class="toggle-row">
+        <div class="switch on" id="streamToggle" onclick="toggleSwitch(this)">
+          <div class="knob"></div>
+        </div>
+        <span style="font-size:0.85em">Streaming mode</span>
+        <span class="help-text" style="margin:0">Split prompt into segments (one per dialogue line) for parallel generation.</span>
+      </div>
+      <div class="toggle-row">
+        <div class="switch on" id="asrTrimToggle" onclick="toggleSwitch(this)">
+          <div class="knob"></div>
+        </div>
+        <span style="font-size:0.85em">ASR Trim</span>
+        <span class="help-text" style="margin:0">Detect and trim instruction words the model accidentally spoke. Only trims from beginning/end of audio.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Generate -->
+  <div class="btn-row">
+    <button class="btn btn-primary" id="genBtn" onclick="startGeneration()">Generate</button>
+    <span class="status-text" id="statusText"></span>
+  </div>
+
+  <!-- Results -->
+  <div class="panel hidden" id="resultsPanel">
+    <h2>Results</h2>
+    <div id="segmentsList"></div>
+    <div class="full-audio hidden" id="fullAudioWrap">
+      <h2 style="margin-top:12px">Full Audio</h2>
+      <audio controls id="fullAudio"></audio>
+    </div>
+  </div>
+
+  <!-- Timing Table -->
+  <div class="panel hidden" id="timingPanel">
+    <h2>Timing Breakdown</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Seg</th><th>GPU</th><th>Text Enc</th><th>Ref Enc</th>
+          <th>Denoise</th><th>Decode</th><th>ASR</th><th>Total</th><th>Audio</th>
+        </tr>
+      </thead>
+      <tbody id="timingBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+// State
+let currentJobId = null;
+let audioCtx = null;
+let playQueue = [];
+let isPlaying = false;
+let segmentCards = {};
+
+// File drop
+const fileDrop = document.getElementById('fileDrop');
+const fileInput = document.getElementById('fileInput');
+const fileLabel = document.getElementById('fileLabel');
+
+fileDrop.addEventListener('click', () => fileInput.click());
+fileDrop.addEventListener('dragover', e => { e.preventDefault(); fileDrop.classList.add('dragover'); });
+fileDrop.addEventListener('dragleave', () => fileDrop.classList.remove('dragover'));
+fileDrop.addEventListener('drop', e => {
+  e.preventDefault(); fileDrop.classList.remove('dragover');
+  if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; onFileSelected(); }
+});
+fileInput.addEventListener('change', onFileSelected);
+
+function onFileSelected() {
+  if (fileInput.files.length) {
+    fileLabel.textContent = fileInput.files[0].name;
+    fileDrop.classList.add('has-file');
+  }
+}
+
+// Panel toggle
+function togglePanel(id) {
+  const el = document.getElementById(id);
+  const toggle = document.getElementById(id.replace('Body','Toggle'));
+  el.classList.toggle('hidden');
+  if (toggle) toggle.textContent = el.classList.contains('hidden') ? '[show]' : '[hide]';
+}
+
+function toggleSwitch(el) {
+  el.classList.toggle('on');
+}
+
+function onDurationModeChange() {
+  const mode = document.getElementById('durationMode').value;
+  document.getElementById('durMulWrap').classList.toggle('hidden', mode === 'fixed');
+  document.getElementById('fixedDurWrap').classList.toggle('hidden', mode !== 'fixed');
+}
+
+// Status
+function setStatus(text, cls) {
+  const el = document.getElementById('statusText');
+  el.textContent = text;
+  el.className = 'status-text ' + (cls || '');
+}
+
+// Format ms
+function fmtMs(ms) {
+  if (ms === undefined || ms === null) return '-';
+  if (ms < 1000) return Math.round(ms) + 'ms';
+  return (ms / 1000).toFixed(1) + 's';
+}
+
+// Generate
+async function startGeneration() {
+  const prompt = document.getElementById('prompt').value.trim();
+  if (!prompt) return;
+
+  const btn = document.getElementById('genBtn');
+  btn.disabled = true;
+  setStatus('Submitting...', 'active');
+
+  // Reset results
+  document.getElementById('resultsPanel').classList.remove('hidden');
+  document.getElementById('segmentsList').innerHTML = '';
+  document.getElementById('fullAudioWrap').classList.add('hidden');
+  document.getElementById('timingPanel').classList.add('hidden');
+  document.getElementById('timingBody').innerHTML = '';
+  segmentCards = {};
+  playQueue = [];
+  isPlaying = false;
+
+  const formData = new FormData();
+  formData.append('prompt', prompt);
+  formData.append('prefix', document.getElementById('prefix').value);
+  formData.append('cfg_scale', document.getElementById('cfgScale').value);
+  formData.append('stg_scale', document.getElementById('stgScale').value);
+  formData.append('duration_multiplier', document.getElementById('durMul').value);
+  formData.append('duration_mode', document.getElementById('durationMode').value);
+  formData.append('fixed_duration', document.getElementById('fixedDur').value);
+  formData.append('ref_duration', document.getElementById('refDur').value);
+  formData.append('seed', document.getElementById('seed').value);
+  formData.append('streaming_mode', document.getElementById('streamToggle').classList.contains('on'));
+  formData.append('asr_trim', document.getElementById('asrTrimToggle').classList.contains('on'));
+  formData.append('num_candidates', document.getElementById('numCandidates').value);
+
+  if (fileInput.files.length) {
+    formData.append('voice_ref', fileInput.files[0]);
+  }
+
+  try {
+    const resp = await fetch('/generate', { method: 'POST', body: formData });
+    const data = await resp.json();
+    currentJobId = data.job_id;
+
+    // Create placeholder cards
+    for (const seg of data.segments) {
+      createSegmentCard(seg.index, seg.text, seg.estimated_duration);
+    }
+
+    setStatus(`Generating ${data.num_segments} segment(s)...`, 'active pulsing');
+
+    // Start SSE
+    connectSSE(data.job_id, data.num_segments);
+  } catch (e) {
+    setStatus('Error: ' + e.message, 'error');
+    btn.disabled = false;
+  }
+}
+
+function createSegmentCard(idx, text, estDur) {
+  const list = document.getElementById('segmentsList');
+  const card = document.createElement('div');
+  card.className = 'segment-card pending';
+  card.id = 'seg-' + idx;
+  card.innerHTML = `
+    <div class="seg-header">
+      <span class="seg-idx">Segment ${idx + 1}</span>
+      <span class="seg-gpu">est. ${estDur.toFixed(1)}s</span>
+    </div>
+    <div class="seg-text">${escapeHtml(text)}</div>
+    <div class="seg-loading" style="font-size:0.8em;color:var(--orange)">Waiting for GPU...</div>
+  `;
+  list.appendChild(card);
+  segmentCards[idx] = card;
+}
+
+function updateSegmentCard(data) {
+  const card = segmentCards[data.index];
+  if (!card) return;
+  card.classList.remove('pending');
+
+  const t = data.timings || {};
+  const gpuLabel = data.gpu_id !== undefined ? `GPU ${data.gpu_id}` : '';
+
+  if (data.event === 'error') {
+    card.innerHTML = `
+      <div class="seg-header">
+        <span class="seg-idx">Segment ${data.index + 1}</span>
+        <span class="seg-gpu" style="color:var(--red)">ERROR</span>
+      </div>
+      <div class="seg-text">${escapeHtml(data.text)}</div>
+      <div style="color:var(--red);font-size:0.8em">${escapeHtml(data.error)}</div>
+    `;
+    return;
+  }
+
+  // ASR info
+  let asrHtml = '';
+  if (t.asr_text !== undefined && t.asr_text !== '') {
+    const trimBadge = t.asr_trimmed
+      ? '<span class="badge badge-trimmed">Trimmed</span>'
+      : '<span class="badge badge-clean">Clean</span>';
+    const asrTime = t.asr_ms ? ` <span class="badge badge-asr">${fmtMs(t.asr_ms)}</span>` : '';
+    const werBadge = t.wer !== undefined ? ` <span class="badge badge-asr">WER: ${(t.wer * 100).toFixed(0)}%</span>` : '';
+    asrHtml = `
+      <div class="asr-info">
+        <span class="asr-label">ASR:</span> ${trimBadge}${asrTime}${werBadge}
+        <span class="asr-transcript">"${escapeHtml(t.asr_text)}"</span>
+      </div>`;
+  }
+
+  // Candidates (multi-candidate ranking)
+  let candidatesHtml = '';
+  if (t.candidates && t.candidates.length > 1) {
+    candidatesHtml = '<div class="asr-info" style="margin-top:6px"><span class="asr-label">All candidates (ranked by reward = WER&#8315;&sup1; &times; CLAP):</span>';
+    for (let ci = 0; ci < t.candidates.length; ci++) {
+      const c = t.candidates[ci];
+      const isBest = ci === 0;
+      const style = isBest ? 'border-left:3px solid var(--green);padding-left:6px' : 'border-left:3px solid var(--border);padding-left:6px;opacity:0.7';
+      const bestLabel = isBest ? ' <span class="badge badge-trimmed">BEST</span>' : '';
+      const clapStr = c.clap_sim !== undefined ? ` CLAP: ${c.clap_sim.toFixed(3)}` : '';
+      const rewardStr = c.reward !== undefined ? ` R: ${c.reward.toFixed(3)}` : '';
+      candidatesHtml += `
+        <div style="margin-top:6px;${style}">
+          <div style="font-size:0.8em"><strong>Seed ${c.seed}</strong> — WER: ${(c.wer * 100).toFixed(0)}%${clapStr}${rewardStr}${bestLabel}</div>
+          <div style="font-size:0.75em;color:var(--fg2);font-style:italic">"${escapeHtml(c.asr_text)}"</div>
+          <audio controls style="width:100%;height:28px;margin-top:4px" src="data:audio/wav;base64,${c.wav_base64}"></audio>
+        </div>`;
+    }
+    candidatesHtml += '</div>';
+  }
+
+  card.innerHTML = `
+    <div class="seg-header">
+      <span class="seg-idx">Segment ${data.index + 1}</span>
+      <span class="seg-gpu">${gpuLabel} | ${t.audio_duration_s || 0}s audio</span>
+    </div>
+    <div class="seg-text">${escapeHtml(data.text)}</div>
+    <audio controls src="data:audio/wav;base64,${data.wav_base64}"></audio>
+    <div class="timing-row">
+      <span class="t-item">text: <span class="t-val">${fmtMs(t.text_encode_ms)}</span></span>
+      <span class="t-item">ref: <span class="t-val">${fmtMs(t.ref_encode_ms)}</span></span>
+      <span class="t-item">denoise: <span class="t-val">${fmtMs(t.denoise_ms)}</span></span>
+      <span class="t-item">decode: <span class="t-val">${fmtMs(t.decode_ms)}</span></span>
+      <span class="t-item">total: <span class="t-val">${fmtMs(t.total_ms)}</span></span>
+    </div>
+    ${asrHtml}
+    ${candidatesHtml}
+  `;
+
+  // Add to timing table
+  addTimingRow(data);
+
+  // Auto-play queue
+  playQueue[data.index] = data.wav_base64;
+  tryAutoPlay();
+}
+
+function addTimingRow(data) {
+  const t = data.timings || {};
+  const tbody = document.getElementById('timingBody');
+  document.getElementById('timingPanel').classList.remove('hidden');
+
+  const row = document.createElement('tr');
+  const asrLabel = t.asr_ms ? fmtMs(t.asr_ms) + (t.asr_trimmed ? ' *' : '') : '-';
+  row.innerHTML = `
+    <td>${data.index + 1}</td>
+    <td>${data.gpu_id !== undefined ? data.gpu_id : '-'}</td>
+    <td>${fmtMs(t.text_encode_ms)}</td>
+    <td>${fmtMs(t.ref_encode_ms)}</td>
+    <td>${fmtMs(t.denoise_ms)}</td>
+    <td>${fmtMs(t.decode_ms)}</td>
+    <td>${asrLabel}</td>
+    <td>${fmtMs(t.total_ms)}</td>
+    <td>${t.audio_duration_s || '-'}s</td>
+  `;
+  // Insert sorted by segment index
+  const rows = Array.from(tbody.rows);
+  const insertBefore = rows.find(r => parseInt(r.cells[0].textContent) > data.index + 1);
+  if (insertBefore) tbody.insertBefore(row, insertBefore);
+  else tbody.appendChild(row);
+}
+
+// Auto-play segments in order
+let nextPlayIdx = 0;
+function tryAutoPlay() {
+  if (isPlaying || nextPlayIdx >= playQueue.length || !playQueue[nextPlayIdx]) return;
+  const b64 = playQueue[nextPlayIdx];
+  const card = segmentCards[nextPlayIdx];
+  if (card) card.classList.add('playing');
+
+  const audio = card ? card.querySelector('audio') : null;
+  if (audio) {
+    isPlaying = true;
+    audio.onended = () => {
+      isPlaying = false;
+      if (card) card.classList.remove('playing');
+      nextPlayIdx++;
+      tryAutoPlay();
+    };
+    audio.play().catch(() => {
+      isPlaying = false;
+      nextPlayIdx++;
+      tryAutoPlay();
+    });
+  } else {
+    nextPlayIdx++;
+    tryAutoPlay();
+  }
+}
+
+// SSE
+function connectSSE(jobId, numSegments) {
+  nextPlayIdx = 0;
+  const es = new EventSource('/stream/' + jobId);
+  let received = 0;
+
+  es.onmessage = (ev) => {
+    const data = JSON.parse(ev.data);
+
+    if (data.event === 'segment' || data.event === 'error') {
+      received++;
+      updateSegmentCard(data);
+      setStatus(`Generated ${received}/${numSegments} segments...`, 'active pulsing');
+    } else if (data.event === 'done') {
+      es.close();
+      const totalTime = (data.total_time_ms / 1000).toFixed(1);
+      const totalAudio = data.total_audio_duration_s || 0;
+      setStatus(`Done: ${totalAudio}s audio in ${totalTime}s`, 'done');
+      document.getElementById('genBtn').disabled = false;
+
+      // Show full audio
+      if (data.full_wav_base64) {
+        const wrap = document.getElementById('fullAudioWrap');
+        wrap.classList.remove('hidden');
+        document.getElementById('fullAudio').src = 'data:audio/wav;base64,' + data.full_wav_base64;
+      }
+
+      // Add total row
+      const tbody = document.getElementById('timingBody');
+      const row = document.createElement('tr');
+      row.className = 'total-row';
+      row.innerHTML = `
+        <td colspan="7">TOTAL</td>
+        <td>${totalTime}s</td>
+        <td>${totalAudio}s</td>
+      `;
+      tbody.appendChild(row);
+    }
+  };
+
+  es.onerror = () => {
+    es.close();
+    setStatus('SSE connection lost', 'error');
+    document.getElementById('genBtn').disabled = false;
+  };
+}
+
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,212 @@
+{
+  "_schema_version": "1.0",
+  "_docs": "See config_schema.md for full documentation of every field.",
+
+  "prompt_generation": {
+    "_comment": "LLM used to generate DramaBox prompts. Requires ~16GB VRAM per GPU. For GGUF: HauhauCS/Gemma-4-E4B-Uncensored-HauhauCS-Aggressive (Q8, uncensored, bolder creative output).",
+    "llm_model": "google/gemma-4-E4B-it",
+    "llm_dtype": "bfloat16",
+    "batch_size": 16,
+    "max_tokens": 1024,
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "total_prompts": 100000,
+    "seed": 600,
+    "gpus": [0, 1, 2, 3]
+  },
+
+  "languages": {
+    "_comment": "Set _enabled to true to include a language. Accents are optional per-language variants.",
+
+    "English": {
+      "_enabled": true,
+      "accents": [
+        "Silicon Valley accent",
+        "British English",
+        "US American English",
+        "Louisiana accent",
+        "Indian accent",
+        "German accent",
+        "French accent",
+        "Spanish accent"
+      ]
+    },
+    "German": {
+      "_enabled": true,
+      "accents": []
+    },
+    "French": {
+      "_enabled": true,
+      "accents": []
+    },
+    "Spanish": {
+      "_enabled": true,
+      "accents": []
+    },
+    "Italian": {
+      "_enabled": false,
+      "_comment": "Enable when Italian word list is added to data/wordlists/italian.json",
+      "accents": []
+    },
+    "Dutch": {
+      "_enabled": false,
+      "_comment": "Enable when Dutch word list is added to data/wordlists/dutch.json",
+      "accents": []
+    },
+    "Russian": {
+      "_enabled": false,
+      "_comment": "Enable when Russian word list is added to data/wordlists/russian.json",
+      "accents": []
+    },
+    "Portuguese": {
+      "_enabled": false,
+      "_comment": "Enable when Portuguese word list is added",
+      "accents": ["Brazilian Portuguese", "European Portuguese"]
+    },
+    "Chinese (Mandarin)": {
+      "_enabled": false,
+      "_comment": "Enable when Mandarin word list is added",
+      "accents": []
+    },
+    "Japanese": {
+      "_enabled": false,
+      "_comment": "Enable when Japanese word list is added",
+      "accents": []
+    },
+    "Korean": {
+      "_enabled": false,
+      "_comment": "Enable when Korean word list is added",
+      "accents": []
+    },
+    "Arabic": {
+      "_enabled": false,
+      "_comment": "Enable when Arabic word list is added",
+      "accents": ["Modern Standard Arabic", "Egyptian Arabic", "Gulf Arabic"]
+    },
+    "Hindi": {
+      "_enabled": false,
+      "_comment": "Enable when Hindi word list is added",
+      "accents": []
+    },
+    "Turkish": {
+      "_enabled": false,
+      "_comment": "Enable when Turkish word list is added",
+      "accents": []
+    },
+    "Polish": {
+      "_enabled": false,
+      "_comment": "Enable when Polish word list is added",
+      "accents": []
+    },
+    "Swedish": {
+      "_enabled": false,
+      "_comment": "Enable when Swedish word list is added",
+      "accents": []
+    }
+  },
+
+  "sampling": {
+    "_comment": "Controls how prompt attributes are sampled.",
+    "archetype_ratio": 0.20,
+    "word_count_min": 10,
+    "word_count_max": 60,
+    "mandatory_dims": ["TEMP", "GEND", "AGEV"],
+    "random_dims_count": 5,
+    "emotions_min": 1,
+    "emotions_max": 3,
+    "mandatory_words_count": 3,
+    "flow_style_distribution": {
+      "scattered": 0.05,
+      "flowing": 0.55,
+      "mixed": 0.40
+    },
+    "emotion_alignment_distribution": {
+      "congruent": 0.30,
+      "neutral": 0.40,
+      "counter-emotional": 0.30
+    },
+    "direction_style_distribution": {
+      "literary": 0.50,
+      "tag": 0.50
+    },
+    "cc_ratio": 0.30,
+    "vocal_bursts_probability": 0.50,
+    "tempo_bias_threshold": 3,
+    "tempo_bias_weight": 1.5
+  },
+
+  "output": {
+    "_comment": "CSV output settings for generated prompts.",
+    "chunk_size": 5000,
+    "output_dir": "./output",
+    "csv_prefix": "dramabox"
+  },
+
+  "tts": {
+    "_comment": "DramaBox TTS synthesis settings. Requires ~24GB VRAM per GPU.",
+    "model_id": "ResembleAI/Dramabox",
+    "text_encoder_id": "unsloth/gemma-3-12b-it-bnb-4bit",
+    "cfg_scale": 2.0,
+    "stg_scale": 1.5,
+    "duration_multiplier": 1.1,
+    "compile": false,
+    "compile_mode": "default",
+    "compile_dynamic": true,
+    "steps": 30,
+    "seed": 42,
+    "gpus": [0, 1, 2, 3],
+    "bnb_4bit": true,
+    "self_vc": true,
+    "ref_duration": 10.0,
+    "watermark": false,
+    "output_format": "wav",
+    "stagger_start_seconds": 2,
+    "dramabox_dir": "/home/deployer/laion/DramaBox"
+  },
+
+  "reference_audio": {
+    "_comment": "Path D: Reference audio pipeline settings.",
+    "situation_dims_count": 5,
+    "timbre_whisper_model": "laion/timbre-whisper",
+    "timbre_whisper_max_tokens": 440
+  },
+
+  "refinement": {
+    "_comment": "Audio refinement pipeline (Resemble Enhance + Chatterbox VC).",
+    "enhance_mode": "enhance",
+    "refine_reference": true,
+    "refine_reference_self_vc": true,
+    "refine_output": true,
+    "refine_output_vc_to_ref": true
+  },
+
+  "best_of_n": {
+    "_comment": "Best-of-N ranking with composite reward scoring.",
+    "enabled": true,
+    "n_candidates": 3,
+    "asr_model": "nvidia/parakeet-tdt-0.6b-v3",
+    "enjoyment_model": "laion/Empathic-Insight-Voice-Plus"
+  },
+
+  "demo": {
+    "_comment": "Demo grid generation settings.",
+    "emolia_dir": "/run/user/1001/speaker_encoder_dataset/emolia_references/cluster_best",
+    "n_references": 5,
+    "n_configs_per_ref": 10,
+    "n_prompts_per_path": 10,
+    "best_of_n": 3,
+    "embed_base64": true,
+    "serve_port": 8080,
+    "output_dir": "/tmp/dramabox_demo",
+    "gpus": [6, 7]
+  },
+
+  "data_paths": {
+    "_comment": "Paths relative to the config file location. Override for custom taxonomy locations.",
+    "voicenet_html": "data/voicenet_ext_taxonomy.html",
+    "emonet_json": "data/emonet_taxonomy.json",
+    "vocal_bursts_json": "data/vocal_bursts_taxonomy.json",
+    "archetypes_json": "data/archetypes.json",
+    "wordlists_dir": "data/wordlists"
+  }
+}

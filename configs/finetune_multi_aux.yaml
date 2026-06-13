@@ -1,0 +1,49 @@
+# Multi-Auxiliary Loss Fine-Tuning — 3 epochs (15-17)
+# Resumes from combined_14ep_clap, adds 3 auxiliary losses:
+#   1. CLAP Naturalness (text similarity + quality MLP)
+#   2. Centroid Real/Fake (cosine to real/synth centroids)
+#   3. Speaker Similarity (WavLM-SV cosine between ref and pred)
+# Each aux loss individually normalized to ~1.0x flow matching magnitude
+# effective batch = 8 GPUs x 1 x 4 grad_accum = 32
+# 3845 samples -> 10339 items/epoch (expand_all_modes) -> ~322 steps/epoch -> ~966 total
+
+preprocessed_dir: ./finetune_data_combined
+output_dir: ./finetune_output/combined_17ep_multi_aux
+dramabox_dir: /home/deployer/laion/DramaBox
+checkpoint: /home/deployer/laion/DramaBox/models/ltx-2.3-22b-dev-audio-only-v13-merged.safetensors
+full_checkpoint: /home/deployer/laion/DramaBox/models/ltx-2.3-22b-dev.safetensors
+gemma_root: /home/deployer/.cache/dramabox/models--unsloth--gemma-3-12b-it-bnb-4bit/snapshots/826e729dbaeea4ecb143738eed2bcf3539ebf7bf
+
+base_model: dev
+lora_rank: 128
+lora_alpha: 128
+lora_dropout: 0.05
+
+# Resume LoRA weights from 14-epoch CLAP run (fresh optimizer for new LR schedule)
+resume_lora: ./finetune_output/combined_14ep_clap/lora_epoch2.safetensors
+index_file: ./finetune_data_combined/index_filtered.json
+
+epochs: 3
+lr: 3.0e-5
+lr_scheduler: cosine
+warmup_steps: 161
+batch_size: 1
+grad_accum: 4
+max_grad_norm: 1.0
+max_ref_tokens: 250
+text_dropout: 0.1
+
+# Multi-auxiliary loss settings
+clap_loss: true
+aux_target_ratio: 1.0
+positive_text: "Realistic, genuine, spontaneous, authentic, sensual, natural voice with all imperfections and organic microdistractions a natural situation brings with it"
+negative_text: "distorted, unnatural, robotic, distortion"
+classifiers_dir: ./classifiers
+
+expand_all_modes: true
+save_every: 161
+log_every: 10
+seed: 42
+val_samples: 10
+val_refs_dir: /home/deployer/laion/test-refs
+monitor_port: 8765

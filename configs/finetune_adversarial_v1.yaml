@@ -1,0 +1,38 @@
+# Adversarial Training v1: Online discriminator + EMA
+# Start from v0.1-wip, 3 epochs, 70/30 flow/disc split
+# Only adversarial disc losses — no speaker sim, no naturalness
+
+# Data: DramaBox + Podcast only (no Emolia)
+bucket_weights: '{"dramabox": 0.5, "podcast": 0.5}'
+podcast_epochs: 3
+
+# Resume from v0.1-wip (same starting point as all other runs)
+resume_lora: "/home/deployer/.cache/huggingface/hub/models--laion--laionbox-v0.1-wip/snapshots/66176d2a653a013a7b71c1ccb7a7a4d4cf514b0d/lora_epoch5.safetensors"
+
+# Generator LR
+lr: 4.0e-5
+
+# Disable standard CLAP/aux losses (adversarial mode handles everything)
+clap_loss: false
+
+# ── Adversarial training ──
+adversarial: true
+adv_disc_path: "./artifact_detector_v2/models/best_large.pt"
+adv_disc_lr: 3.0e-4
+adv_disc_epochs: 3
+adv_disc_interval: 8
+adv_ema_decay: 0.995
+adv_flow_weight: 0.7
+adv_disc_weight: 0.3
+adv_buffer_min: 50
+
+# Sigma threshold (same as other runs)
+aux_sigma_max: 0.4
+
+# Output
+output_dir: "./finetune_output/lora_adversarial_v1"
+monitor_port: 8793
+log_every: 5
+save_every: 10
+keep_last_n: 3
+no_save_state: true

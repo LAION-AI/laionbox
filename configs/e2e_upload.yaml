@@ -1,0 +1,99 @@
+# =============================================================================
+# DramaBox End-to-End Pipeline — Upload-and-Delete Configuration
+# =============================================================================
+#
+# Same as e2e_local.yaml but uploads completed TARs to HuggingFace and deletes
+# local copies to manage disk space. Ideal for long-running generation jobs on
+# machines with limited storage.
+#
+# Usage:
+#   python scripts/dramabox_e2e.py --config configs/e2e_upload.yaml
+#   python scripts/dramabox_e2e.py --config configs/e2e_upload.yaml --test
+# =============================================================================
+
+mode: "generate"
+
+prompt_generation:
+  gguf_model_path: "/home/deployer/laion/vocalbursts/models/gemma4-e4b-uncensored/Gemma-4-E4B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf"
+  n_ctx: 8192
+  max_tokens: 4096
+  temperature: 0.85
+  top_p: 0.92
+  default_format: "cut_to"
+
+prompt_ingestion:
+  prompt_files:
+    - "dramabox_cca_voicenet.json"
+    - "dramabox_cc2c_archetype.json"
+    - "dramabox_accc_acting_challenge.json"
+    - "dramabox_sit_situation.json"
+    - "dramabox_extreme_physical.json"
+    - "dramabox_cca_voicenet_de.json"
+    - "dramabox_cc2c_archetype_de.json"
+    - "dramabox_accc_acting_challenge_de.json"
+    - "dramabox_extreme_physical_de.json"
+
+pathway_percentages:
+  voicenet: 0.25
+  acting_challenge: 0.25
+  situation: 0.25
+  archetype: 0.15
+  extreme_physical: 0.10
+
+language_percentages:
+  English: 0.50
+  German: 0.50
+
+gpu:
+  devices: "auto"
+  loading_mode: "auto"
+
+tts:
+  seeds_per_prompt: 25
+  dramabox_dir: "/home/deployer/laion/DramaBox"
+  cfg_scale: 2.5
+  stg_scale: 1.5
+  duration_multiplier: 1.1
+  watermark: false
+  compile_model: true
+  bnb_4bit: true
+
+postprocess:
+  reuse_dir: "/home/deployer/laion/REUSE"
+  whisper_model: "turbo"
+  clap_batch_size: 16
+  mp3_bitrate: "256k"
+  mp3_sample_rate: 48000
+
+batching:
+  prompts_per_group: 25
+  groups_per_tar: 10
+
+output:
+  output_dir: "./e2e_output"
+
+# --- Key difference: upload and delete local copies ---------------------------
+storage:
+  mode: "upload_and_delete"
+
+huggingface:
+  # Set via HF_TOKEN environment variable, or replace this placeholder
+  token: "YOUR_HF_TOKEN_HERE"
+  repo_id: "laion/dramabox-voice-acting-e2e"
+
+monitor:
+  enabled: true
+  port: 8766
+  cloudflare_tunnel: true
+
+logging:
+  file: "pipeline.log"
+  level: "INFO"
+
+seed: 42
+data_dir: "data"
+
+quality_prefix: "Realistic, genuine, spontaneous, authentic, sensual, natural voice with all imperfections and organic microdistractions a natural situation brings with it. "
+quality_suffix: " Realistic, genuine, spontaneous, authentic, sensual, natural voice with all imperfections and organic microdistractions a natural situation brings with it"
+
+auto_resume: true

@@ -1,0 +1,51 @@
+# 6-Aux Training: All Discriminators Combined
+# Resume from v0.1-wip (same starting point as 3-aux run)
+# Losses: naturalness + quality_mlp + centroid + speaker_sim + comb_v1 + artifact_v2 + clap_artifact
+
+# Data: DramaBox + Podcast only (no Emolia)
+bucket_weights: '{"dramabox": 0.5, "podcast": 0.5}'
+podcast_epochs: 1
+
+# Resume from v0.1-wip (same as 3-aux run starting point)
+resume_lora: "/home/deployer/.cache/huggingface/hub/models--laion--laionbox-v0.1-wip/snapshots/66176d2a653a013a7b71c1ccb7a7a4d4cf514b0d/lora_epoch5.safetensors"
+
+# LR
+lr: 4.0e-5
+
+# Enable differentiable auxiliary losses
+clap_loss: true
+differentiable_reward: true
+diff_reward_checkpoint: true
+
+# Aux loss ratios (all equal at 3.0)
+aux_target_ratio: 3.0       # naturalness + quality MLP coefficient ratio
+speaker_sim_ratio: 3.0      # speaker sim coefficient ratio
+comb_target_ratio: 3.0      # comb detector v1 coefficient ratio
+artifact_v2_ratio: 3.0      # artifact detector V2 coefficient ratio
+clap_artifact_ratio: 3.0    # CLAP artifact MLP coefficient ratio
+
+# Enable ALL losses
+no_centroid: false
+no_speaker_sim: false
+no_quality_mlp: false
+
+# Classifiers directory (quality MLP + centroid embeddings)
+classifiers_dir: "./classifiers"
+
+# Comb filter detector v1
+comb_detector_path: "./comb_filter_detector/models/best_comb_detector.pt"
+no_comb_detector: false
+
+# Artifact detector V2 CNN (trained on model predictions)
+artifact_v2_path: "./artifact_detector_v2/models/best_artifact_detector_v2.pt"
+
+# CLAP-based artifact MLP (trained on CLAP embeddings)
+clap_artifact_path: "./artifact_detector_clap/models/best_clap_medium.pt"
+
+# Output
+output_dir: "./finetune_output/lora_6aux_all_disc"
+monitor_port: 8792
+log_every: 5
+save_every: 10
+keep_last_n: 3
+no_save_state: true

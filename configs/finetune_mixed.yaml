@@ -1,0 +1,62 @@
+# Mixed-source training: 40% DramaBox, 20% Emolia (all 6K), 40% Podcast (12K)
+# Peak LR 6e-5, cosine schedule, ~1172 optimizer steps
+# Resumes from diff_reward_5ep epoch 5 LoRA
+
+# ── Data source ────────────────────────────────────────────────────────
+preprocessed_dir: "./finetune_data_combined"
+index_file: "index_mixed.json"
+
+# ── Source weights (per global batch proportions) ──────────────────────
+source_weights:
+  dramabox: 0.4
+  emolia: 0.2
+  podcast: 0.4
+
+# ── DramaBox model paths ──────────────────────────────────────────────
+dramabox_dir: "/home/deployer/laion/DramaBox"
+checkpoint: "/home/deployer/laion/DramaBox/models/ltx-2.3-22b-dev-audio-only-v13-merged.safetensors"
+full_checkpoint: "/home/deployer/laion/DramaBox/models/ltx-2.3-22b-dev.safetensors"
+gemma_root: "/home/deployer/.cache/dramabox/models--unsloth--gemma-3-12b-it-bnb-4bit/snapshots/826e729dbaeea4ecb143738eed2bcf3539ebf7bf"
+base_model: "dev"
+
+# ── LoRA ──────────────────────────────────────────────────────────────
+lora_rank: 128
+lora_alpha: 128
+lora_dropout: 0.05
+resume_lora: "./finetune_output/diff_reward_5ep/lora_epoch5.safetensors"
+
+# ── Training ──────────────────────────────────────────────────────────
+steps: 1172
+lr: 6.0e-5
+lr_scheduler: "cosine"
+warmup_steps: 100
+batch_size: 1
+grad_accum: 32               # effective batch = 8 GPUs × 1 × 32 = 256
+max_grad_norm: 1.0
+seed: 42
+expand_all_modes: true        # All 3 modes for DramaBox/podcast, fwd only for Emolia
+
+# ── Voice cloning specific ────────────────────────────────────────────
+max_ref_tokens: 250
+text_dropout: 0.1
+
+# ── Checkpointing ────────────────────────────────────────────────────
+output_dir: "./finetune_output/mixed_40_20_40"
+save_every: 200
+log_every: 10
+
+# ── Monitor ───────────────────────────────────────────────────────────
+monitor_port: 8766
+
+# ── Validation ────────────────────────────────────────────────────────
+val_samples: 10
+val_refs_dir: "/home/deployer/laion/test-refs"
+
+# ── Expected training stats ──────────────────────────────────────────
+# Effective batch: 256 items/step (8 GPUs × 32 grad_accum)
+# Per step: ~102 DramaBox, ~51 Emolia, ~103 Podcast items
+# At 1172 steps:
+#   Podcast:  ~10× per sample (120K touches / 12K samples)
+#   DramaBox: ~37× per sample (120K touches / 3.2K samples)
+#   Emolia:   ~10× per sample (60K touches / 6K samples)
+# Estimated time: ~9-10 hours on 8×A100

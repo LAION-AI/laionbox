@@ -1,0 +1,51 @@
+# Run 18: LoRA s130 continuation, no aux losses, mixed data
+# Hypothesis: artifacts come from auxiliary losses, not from model/LoRA itself
+# Resume s130 LoRA with flow-matching-only on 70% podcast + 30% dramabox
+# Effective batch: 8 GPUs x 1 x 16 = 128
+
+# -- Data source ---------------------------------------------------------------
+preprocessed_dir: "./finetune_data_combined"
+index_file: "./finetune_data_combined/index_mixed.json"
+
+bucket_weights:
+  podcast: 0.7
+  dramabox: 0.3
+
+podcast_epochs: 2
+
+# -- DramaBox model paths ------------------------------------------------------
+dramabox_dir: "/home/deployer/laion/DramaBox"
+checkpoint: "/home/deployer/laion/DramaBox/models/ltx-2.3-22b-dev.safetensors"
+full_checkpoint: "/home/deployer/laion/DramaBox/models/ltx-2.3-22b-dev.safetensors"
+gemma_root: "/home/deployer/.cache/dramabox/models--unsloth--gemma-3-12b-it-bnb-4bit/snapshots/826e729dbaeea4ecb143738eed2bcf3539ebf7bf"
+base_model: "dev"
+
+# -- LoRA (resume from s130) ---------------------------------------------------
+lora_rank: 128
+lora_alpha: 128
+lora_dropout: 0.05
+resume_lora: "/home/deployer/laion/Voice-Acting-Pipeline/finetune_output/fair_nat_spk_quality/lora_step_00130.safetensors"
+
+# -- Training ------------------------------------------------------------------
+lr: 2.0e-5
+lr_scheduler: "cosine"
+warmup_steps: 20
+batch_size: 1
+grad_accum: 16
+max_grad_norm: 1.0
+seed: 42
+expand_all_modes: true
+max_ref_tokens: 200
+text_dropout: 0.1
+
+# -- No auxiliary losses -------------------------------------------------------
+clap_loss: false
+
+# -- Checkpoint management -----------------------------------------------------
+output_dir: "./finetune_output/lora_s130_mixed_noaux_2ep"
+save_every: 20
+log_every: 5
+monitor_port: 8780
+no_save_state: true
+
+val_samples: 0

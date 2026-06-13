@@ -1,0 +1,18 @@
+[
+  {
+    "id": "love_vulnerable",
+    "title": "Vulnerable Love Declaration",
+    "gen_duration": 20,
+    "prompt": "Genuine, intimate, vulnerable. Voice trembles with sincerity, then shifts to surprised amusement. High Quality Recording. 'I never thought I'd say this out loud, but you make every broken piece feel like it matters. [soft laugh] God, look at me, I'm standing here smiling through all of this. You wonderful, terrifying, ridiculous person. I think I really love you.'"
+  },
+  {
+    "id": "horror_basement",
+    "title": "Basement Horror to Relief",
+    "prompt": "Alone in a dark basement, escalating dread then sudden relief. High Quality Recording. 'Hello? Is someone down here? Oh God, I can hear breathing. [terrified scream] NO! STAY AWAY FROM ME! Wait... oh. Oh my God, it's just you. Jesus Christ, you scared me half to death. Don't ever do that again.'"
+  },
+  {
+    "id": "funny_ecstasy",
+    "title": "Funny Story with Ecstatic Memory",
+    "prompt": "Telling a hilarious story to friends, laughter keeps breaking through. High Quality Recording. 'And then, [laughing] and then she just looked at him dead serious and said, that is not a duck! [ecstatic laughter] Oh man, those summers were absolute magic. Pure, ridiculous, beautiful magic. I would give anything to go back to those days.'"
+  }
+]

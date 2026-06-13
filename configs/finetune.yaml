@@ -1,0 +1,59 @@
+# DramaBox Voice Cloning Fine-Tuning Configuration
+
+# ── Data source ────────────────────────────────────────────────────────
+annotated_repo: "laion/dramabox-voice-acting-data-annotated"
+total_batches: 363
+
+# ── Preprocessed data (output of dramabox_finetune_prepare.py) ─────────
+preprocessed_dir: "./finetune_data"
+
+# ── Sample selection ───────────────────────────────────────────────────
+top_k: 3                    # Take top-K samples per prompt group by reward
+min_reward: 0.05             # Minimum reward_full threshold
+max_duration_sec: 20.0       # Maximum audio duration for any piece
+min_duration_sec: 2.0        # Minimum part duration
+skip_singing: true           # Skip singing_flag=true samples
+require_cut_to: true         # Only use samples with has_cut_to=true
+
+# ── DramaBox model paths ──────────────────────────────────────────────
+dramabox_dir: "/home/deployer/laion/DramaBox"
+checkpoint: "/home/deployer/laion/DramaBox/models/ltx-2.3-22b-dev-audio-only-v13-merged.safetensors"
+full_checkpoint: "/home/deployer/laion/DramaBox/models/ltx-2.3-22b-dev.safetensors"
+gemma_root: "/home/deployer/.cache/dramabox/models--unsloth--gemma-3-12b-it-bnb-4bit/snapshots/826e729dbaeea4ecb143738eed2bcf3539ebf7bf"
+base_model: "dev"            # dev = ShiftedLogitNormal sampler
+
+# ── LoRA ──────────────────────────────────────────────────────────────
+lora_rank: 128
+lora_alpha: 128
+lora_dropout: 0.05
+
+# ── Training ──────────────────────────────────────────────────────────
+steps: 15000
+lr: 5.0e-5
+lr_scheduler: "cosine"       # cosine, linear, constant
+warmup_steps: 500
+batch_size: 1                # per GPU
+grad_accum: 4                # effective batch = 8 GPUs × 1 × 4 = 32
+max_grad_norm: 1.0
+seed: 42
+
+# ── Voice cloning specific ────────────────────────────────────────────
+max_ref_tokens: 250          # ~10s of reference audio
+text_dropout: 0.1            # 10% chance to drop text (force reliance on ref)
+max_silence_pad_frames: 25   # Random silence padding 0-25 frames (~0-1s)
+mode_weights:                # Probability of each training mode
+  voice_clone_fwd: 0.33      # Predict part2 given part1
+  voice_clone_rev: 0.33      # Predict part1 given part2
+  unconditional: 0.34        # Predict full without reference
+
+# ── Checkpointing ────────────────────────────────────────────────────
+output_dir: "./finetune_output"
+save_every: 500
+log_every: 25
+
+# ── Monitor ───────────────────────────────────────────────────────────
+monitor_port: 8765           # Port for training monitor HTTP server
+metrics_file: "metrics.jsonl"
+
+# ── Validation ────────────────────────────────────────────────────────
+# val_config: configs/val_config.yaml

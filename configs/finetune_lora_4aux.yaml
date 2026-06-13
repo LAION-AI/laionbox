@@ -1,0 +1,75 @@
+# LoRA training with 4 auxiliary losses (from v0.1-wip checkpoint)
+# Losses: (1) CLAP Naturalness + Quality MLP, (2) Centroid Real/Fake,
+#         (3) Speaker Similarity (WavLM-SV), (4) Comb Filter Detector CNN
+# Comb detector operates directly on latent space — no decoder overhead
+# Data: DramaBox + Emilia + Podcasts (21K samples)
+# Effective batch: 8 GPUs x 1 x 16 = 128
+# 1 podcast epoch ~ 94 optimizer steps
+
+# -- Data source ---------------------------------------------------------------
+preprocessed_dir: "/home/deployer/laion/Voice-Acting-Pipeline/finetune_data_combined"
+index_file: "/home/deployer/laion/Voice-Acting-Pipeline/finetune_data_combined/index_mixed.json"
+
+bucket_weights:
+  dramabox: 0.3
+  emolia: 0.3
+  podcast: 0.4
+
+podcast_epochs: 1
+
+# -- DramaBox model paths ------------------------------------------------------
+dramabox_dir: "/home/deployer/laion/DramaBox"
+checkpoint: "/home/deployer/laion/DramaBox/models/ltx-2.3-22b-dev-audio-only-v13-merged.safetensors"
+full_checkpoint: "/home/deployer/laion/DramaBox/models/ltx-2.3-22b-dev.safetensors"
+gemma_root: "/home/deployer/.cache/dramabox/models--unsloth--gemma-3-12b-it-bnb-4bit/snapshots/826e729dbaeea4ecb143738eed2bcf3539ebf7bf"
+base_model: "dev"
+
+# -- LoRA config ---------------------------------------------------------------
+lora_rank: 128
+lora_alpha: 128
+lora_dropout: 0.05
+resume_lora: "/home/deployer/.cache/huggingface/hub/models--laion--laionbox-v0.1-wip/snapshots/66176d2a653a013a7b71c1ccb7a7a4d4cf514b0d/lora_epoch5.safetensors"
+
+# -- Training ------------------------------------------------------------------
+lr: 4.0e-5
+lr_scheduler: "cosine"
+warmup_steps: 15
+batch_size: 1
+grad_accum: 16
+max_grad_norm: 1.0
+seed: 42
+expand_all_modes: true
+max_ref_tokens: 250
+text_dropout: 0.1
+
+# -- Auxiliary losses (all 4 enabled) ------------------------------------------
+clap_loss: true
+differentiable_reward: true
+diff_reward_checkpoint: true
+aux_target_ratio: 1.0
+aux_sigma_max: 0.4
+coeff_cap: 10.0
+
+positive_text: "Realistic, genuine, spontaneous, authentic, sensual, natural voice with all imperfections and organic microdistractions a natural situation brings with it"
+negative_text: "distorted, unnatural, robotic, distortion"
+classifiers_dir: "./classifiers"
+
+# Individual loss toggles (all ON)
+no_centroid: false
+no_speaker_sim: false
+no_quality_mlp: false
+
+# Comb filter detector (stronger than other aux losses)
+comb_detector_path: "/home/deployer/laion/Voice-Acting-Pipeline/comb_filter_detector/models/best_comb_detector.pt"
+no_comb_detector: false
+comb_target_ratio: 3.0
+
+# -- Checkpoint management -----------------------------------------------------
+output_dir: "/home/deployer/laion/Voice-Acting-Pipeline/finetune_output/lora_4aux_1ep"
+save_every: 10
+log_every: 5
+monitor_port: 8783
+keep_last_n: 3
+no_save_state: false
+
+val_samples: 0

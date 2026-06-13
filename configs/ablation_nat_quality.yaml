@@ -1,0 +1,64 @@
+# Ablation A: Naturalness + Quality MLP
+# Tests the effect of adding quality MLP (P(real) classifier) to naturalness reward
+# From LaionBox v0.1-wip, same settings as nat_only_2ep
+
+# ── Data source ────────────────────────────────────────────────────────
+preprocessed_dir: "./finetune_data_combined"
+index_file: "./finetune_data_combined/index_mixed.json"
+
+bucket_weights:
+  dramabox: 0.4
+  emolia: 0.2
+  podcast: 0.4
+
+podcast_epochs: 2
+
+# ── DramaBox model paths ──────────────────────────────────────────────
+dramabox_dir: "/home/deployer/laion/DramaBox"
+checkpoint: "/home/deployer/laion/DramaBox/models/ltx-2.3-22b-dev-audio-only-v13-merged.safetensors"
+full_checkpoint: "/home/deployer/laion/DramaBox/models/ltx-2.3-22b-dev.safetensors"
+gemma_root: "/home/deployer/.cache/dramabox/models--unsloth--gemma-3-12b-it-bnb-4bit/snapshots/826e729dbaeea4ecb143738eed2bcf3539ebf7bf"
+base_model: "dev"
+
+# ── LoRA ──────────────────────────────────────────────────────────────
+lora_rank: 128
+lora_alpha: 128
+lora_dropout: 0.05
+resume_lora: "/home/deployer/.cache/huggingface/hub/models--laion--laionbox-v0.1-wip/snapshots/66176d2a653a013a7b71c1ccb7a7a4d4cf514b0d/lora_epoch5.safetensors"
+
+# ── Training ──────────────────────────────────────────────────────────
+lr: 2.0e-5
+lr_scheduler: "cosine"
+warmup_steps: 40
+batch_size: 1
+grad_accum: 32
+max_grad_norm: 1.0
+seed: 42
+expand_all_modes: true
+max_ref_tokens: 250
+text_dropout: 0.1
+
+# ── Auxiliary rewards ─────────────────────────────────────────────────
+clap_loss: true
+differentiable_reward: false
+clap_model: "gijs/voiceclap-lco-7b-lora"
+clap_quantize: "int4"
+aux_sigma_max: 0.4
+aux_target_ratio: 6.0
+coeff_cap: 10.0
+no_centroid: true
+no_speaker_sim: true
+no_quality_mlp: false    # ENABLED: quality MLP P(real)
+positive_text: "Realistic, genuine, spontaneous, authentic, sensual, natural voice with all imperfections and organic microdistractions a natural situation brings with it"
+negative_text: "distorted, unnatural, robotic, distortion"
+
+# ── Checkpoint management ────────────────────────────────────────────
+output_dir: "./finetune_output/ablation_nat_quality"
+save_every: 10
+keep_last_n: 3
+log_every: 10
+monitor_port: 8768
+
+val_samples: 0
+
+no_save_state: true
