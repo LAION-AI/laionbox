@@ -1,6 +1,6 @@
 # LaionBox
 
-**LaionBox** is a fine-tuned version of [DramaBox](https://huggingface.co/ResembleAI/Dramabox) (22B parameter DiT-based TTS) that produces more natural, emotionally expressive speech with improved voice cloning fidelity.
+**LaionBox** is a fine-tuned version of [DramaBox](https://huggingface.co/ResembleAI/Dramabox) (3,3B parameter DiT-based TTS) that produces more natural, emotionally expressive speech with improved voice cloning fidelity.
 
 📄 **[Technical Report](https://laion-ai.github.io/laionbox/)** | 🤗 **[Model on HuggingFace](https://huggingface.co/laion/laionbox-v0.2-wip)** | 🎧 **[Audio Samples](https://laion-ai.github.io/laionbox/)**
 
